@@ -1,94 +1,105 @@
-# Функція визначає пріоритет операторів
-def precedence(operator)
-  case operator
+# Функція, яка визначає пріоритет операторів
+def operator_precedence(op)
+  case op
   when '+', '-'
-    1
+    return 1  # Складення та віднімання мають пріоритет 1
   when '*', '/'
-    2
+    return 2  # Множення та ділення мають пріоритет 2
   else
-    0
+    return 0  # Невідомі оператори мають пріоритет 0
   end
 end
 
-# Перевіряє, чи є рядок числом (підтримка цілих та дробових чисел)
-def is_number?(str)
-  str.match?(/\A-?\d+(\.\d+)?\z/)
+# Перевіряє, чи є рядок числом
+def is_number(str)
+  return str.match?(/\A-?\d+(\.\d+)?\z/)  # Перевірка на ціле або дробове число
 end
 
-# Додає число у вихідний масив
-def add_to_output(output, element)
-  output << element
+# Додає елемент в масив
+def add_output(output, el)
+  output << el  # Додає елемент до виходу
 end
 
-# Обробляє закриту дужку - витягує оператори до відкритої дужки
-def process_closing_parenthesis(output, stack_operators)
-  while stack_operators.any? && stack_operators.last != '('
-    add_to_output(output, stack_operators.pop)
+# Обробляє закриту дужку
+def handle_closing_bracket(output, operators_stack)
+  # Витягуємо оператори з стеку до відкритої дужки
+  while !operators_stack.empty? && operators_stack.last != '('
+    add_output(output, operators_stack.pop)  # Додаємо оператор до виходу
   end
-  stack_operators.pop  # Видаляємо відкриту дужку зі стеку
+  operators_stack.pop  # Видаляємо '(' зі стеку
 end
 
-# Обробляє оператор: порівнює пріоритети і додає в стек або вихід
-def process_operator(output, stack_operators, operator)
-  while stack_operators.any? && precedence(stack_operators.last) >= precedence(operator)
-    add_to_output(output, stack_operators.pop)
+# Обробляє оператор
+def handle_operator(output, operators_stack, operator)
+  # Порівнюємо пріоритети операторів
+  while !operators_stack.empty? && operator_precedence(operators_stack.last) >= operator_precedence(operator)
+    add_output(output, operators_stack.pop)  # Додаємо оператор до виходу
   end
-  stack_operators.push(operator)
+  operators_stack.push(operator)  # Додаємо новий оператор у стек
 end
 
-# Розбиває вираз на числа та оператори (працює з виразами без пробілів)
-def tokenize(expression)
-  tokens = []
-  current_token = ''
+# Розбиває рядок на токени
+def split_expression_to_tokens(expression)
+  tokens = []  # Масив для зберігання токенів
+  temp_token = ''  # Тимчасовий токен для чисел
 
-  expression.chars.each_with_index do |char, index|
-    if char =~ /\d/ || char == '.' || (char == '-' && (index == 0 || expression[index - 1] == '('))
-      current_token += char
+  # Проходимо по кожному символу рядка
+  expression.each_char.with_index do |char, i|
+    # Перевіряємо, чи символ є цифрою
+    is_digit = char =~ /\d/
+    # Перевіряємо, чи символ є крапкою
+    is_dot = char == '.'
+    # Перевіряємо, чи символ є '-' і на правильній позиції
+    is_minus = char == '-' && (i == 0 || expression[i - 1] == '(')
+
+    # Якщо символ - цифра, крапка або знак '-'
+    if is_digit || is_dot || is_minus
+      temp_token += char  # Додаємо символ до тимчасового токена
     else
-      tokens << current_token unless current_token.empty?
-      current_token = ''
-      tokens << char unless char.strip.empty?
-    end
-  end
-  tokens << current_token unless current_token.empty?
-
-  tokens
-end
-
-# Функція перетворення інфіксної нотації у постфіксну (RPN)
-def infix_to_rpn(expression)
-  output = []         # Вихідний масив для результату
-  stack_operators = [] # Стек для збереження операторів
-
-  elements = tokenize(expression) # Отримуємо токени (елементи) виразу
-
-  elements.each do |element|
-    if is_number?(element)
-      add_to_output(output, element)  # Додаємо числа до вихідного масиву
-    else
-      case element
-      when '('
-        stack_operators.push(element)
-      when ')'
-        process_closing_parenthesis(output, stack_operators)
-      else
-        process_operator(output, stack_operators, element)
+      unless temp_token.empty?
+        tokens << temp_token  # Додаємо тимчасовий токен до масиву
+        temp_token = ''  # Очищаємо тимчасовий токен
       end
+      tokens << char unless char == ' '  # Додаємо оператор, якщо не пробіл
     end
   end
 
-  # Переносимо всі оператори зі стеку у вихідний масив
-  while stack_operators.any?
-    add_to_output(output, stack_operators.pop)
-  end
-
-  output.join(' ')  # Повертаємо результат у вигляді рядка
+  tokens << temp_token unless temp_token.empty?  # Додаємо останній токен, якщо він не порожній
+  return tokens  # Повертаємо масив токенів
 end
 
-# Основний код для отримання виразу від користувача
-puts "Enter a mathematical expression:"
-input_expression = gets.chomp
+# Основна функція для конвертації виразу в RPN (обернена польська нотація)
+def convert_infix_to_rpn(expression)
+  output = []  # Тут буде результат
+  operators_stack = []  # Стек для операторів
 
-# Перетворення виразу у постфіксну нотацію та виведення результату
-rpn_output = infix_to_rpn(input_expression)
-puts "Reverse Polish Notation: #{rpn_output}"
+  tokens = split_expression_to_tokens(expression)  # Розбиваємо на токени
+
+  # Проходимо по кожному токену
+  tokens.each do |token|
+    if is_number(token)
+      add_output(output, token)  # Якщо токен - число, додаємо до виходу
+    elsif token == '('
+      operators_stack.push(token)  # Додаємо відкриту дужку до стеку
+    elsif token == ')'
+      handle_closing_bracket(output, operators_stack)  # Обробляємо закриту дужку
+    else
+      handle_operator(output, operators_stack, token)  # Обробляємо оператор
+    end
+  end
+
+  # Переміщаємо залишені оператори в вихідний масив
+  while !operators_stack.empty?
+    add_output(output, operators_stack.pop)  # Додаємо оператори до виходу
+  end
+
+  return output.join(' ')  # Повертаємо результат у вигляді рядка
+end
+
+# Запитуємо у користувача вираз
+puts "Enter a mathematical expression:"
+input_expr = gets.chomp
+
+# Перетворюємо вираз у постфіксну нотацію
+rpn_result = convert_infix_to_rpn(input_expr)
+puts "Reverse Polish Notation: #{rpn_result}"
